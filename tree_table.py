@@ -1979,6 +1979,7 @@ class DataTable(ScrollView, Generic[CellType], can_focus=True):
                 if row_metadata.label
                 else None
             )
+        expand = False
         if self._extended_row_exists:
             form = {
                 Expand.no_childs: '╠',
