@@ -5,6 +5,9 @@ from itertools import cycle
 from textual.app import App, ComposeResult
 from tree_table import DataTable
 
+from os import sys
+from map_parse import parse_map_file
+
 ROWS = [
     ("lane", "swimmer", "country", "time"),
     ('1', "Joseph Schooling", "Singapore", 50.39),
@@ -36,8 +39,9 @@ class TableApp(App):
         table = self.query_one(DataTable)
         table.cursor_type = next(cursors)
         table.zebra_stripes = True
-        table.add_columns(*ROWS[0])
-        table.add_rows(ROWS[1:])
+        rows = parse_map_file(sys.argv[1])
+        table.add_columns(*rows[0])
+        table.add_rows(rows[1:])
 
     def key_c(self):
         table = self.query_one(DataTable)
