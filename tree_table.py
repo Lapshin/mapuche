@@ -1928,8 +1928,8 @@ class DataTable(ScrollView, Generic[CellType], can_focus=True):
             ordered_rows = []
             for _, row in rows_tree.items():
                 ordered_rows.append(self.rows[row.key])
-                if self.rows[row.key].expanded not in [Expand.no_childs, Expand.collapsed] and len(row.tree) > 0:
-                    ordered_rows = ordered_rows + rows_tree_to_ordered_rows(row.tree)
+                if self.rows[row.key].expanded == Expand.expanded_root:
+                    ordered_rows += rows_tree_to_ordered_rows(row.tree)
             return ordered_rows
 
         cache_key = self._update_count
