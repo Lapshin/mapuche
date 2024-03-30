@@ -1883,7 +1883,7 @@ class DataTable(ScrollView, Generic[CellType], can_focus=True):
         Returns:
             True if the row index is within the bounds of the table.
         """
-        return 0 <= row_index < self.row_count
+        return 0 <= row_index < self.row_count_to_show
 
     def is_valid_column_index(self, column_index: int) -> bool:
         """Return a boolean indicating whether the column_index is within table bounds.
@@ -2599,7 +2599,6 @@ class DataTable(ScrollView, Generic[CellType], can_focus=True):
                 row.expanded = Expand.expanded_root
             for k, _ in row.tree.items():
                 self._new_rows.add(k)
-                r = self.rows[k]
             self._update_count += 1
             self._require_update_dimensions = True
             self.refresh()
