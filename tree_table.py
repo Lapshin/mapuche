@@ -2599,6 +2599,8 @@ class DataTable(ScrollView, Generic[CellType], can_focus=True):
                 row.expanded = Expand.expanded_root
             for k, _ in row.tree.items():
                 self._new_rows.add(k)
+                for c in self.ordered_columns:
+                    self._updated_cells.add(CellKey(k, c.key))
             self._update_count += 1
             self._require_update_dimensions = True
             self.refresh()
