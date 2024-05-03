@@ -1982,15 +1982,15 @@ class DataTable(ScrollView, Generic[CellType], can_focus=True):
         expand = False
         if self._extended_row_exists:
             form = {
-                Expand.no_childs: '╠',
-                Expand.collapsed: '╬',
-                Expand.expanded_root: '╫',
-                Expand.expanded_first: '╗',
-                Expand.expanded_last: '╚',
+                Expand.no_childs: '▒',
+                Expand.collapsed: '▶',
+                Expand.expanded_root: '▲',
+                Expand.expanded_first: '▚',
+                Expand.expanded_last: '▞',
             }
 
             row = self.rows[self._row_locations.get_key(row_index)]
-            formatter = '│' * row.expand_level + form[row.expanded]
+            formatter = '░' * row.expand_level + form[row.expanded]
             expand = (
                 default_cell_formatter(formatter)
             )
