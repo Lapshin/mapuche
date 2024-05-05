@@ -45,18 +45,6 @@ def parse_mapfile_entry(f, line):
     return {'name': name, 'address': split[0], 'size': int(split[1], 16), 'source': source}
 
 
-def convert_to_textual_rows(json_data, add_header=True):
-    rows = []
-    if add_header:
-        rows += [tuple(['name', 'address', 'size', 'source'])]
-    for k in json_data:
-        entry = json_data[k]
-        rows.append(tuple([entry['name'], entry['address'], entry['size'], entry['source'] or '']))
-        if len(entry['entries']) > 0:
-            rows += tuple([convert_to_textual_rows(entry['entries'], False)])
-    return rows
-    
-
 def fill_all_fields_with_info(data):
     size = 0
     for k in data['entries']:
@@ -66,15 +54,21 @@ def fill_all_fields_with_info(data):
         data['size'] = size
     return data['size']
 
-def convert_diff_to_textual_rows(json_data, add_header=True):
+def convert_to_textual_rows(json_data, is_diff=False, add_header=True):
     rows = []
     if add_header:
-        rows += [tuple(['name', 'address', 'size', 'diff', 'delta'])]
+        if is_diff:
+            rows += [tuple(['name', 'address', 'size', 'diff', 'delta'])]
+        else:
+            rows += [tuple(['name', 'address', 'size'])]
     for k, v in json_data['entries'].items():
-        rows.append(tuple([v['name'], v['address'], v['size'], v['diff'], v['delta']]))
+        if is_diff:
+            rows.append(tuple([v['name'], v['address'], v['size'], v['diff'], v['delta']]))
+        else:
+            rows.append(tuple([v['name'], v['address'], v['size']]))
         if len(v['entries']) == 0:
             continue
-        rows += tuple([convert_diff_to_textual_rows(v, False)])
+        rows += tuple([convert_to_textual_rows(v, is_diff, False)])
     return rows
 
 
@@ -133,7 +127,7 @@ def _parse_map_file(map_file):
 
 def parse_map_file(map_file):
     p = _parse_map_file(map_file)
-    return convert_to_textual_rows(p)
+    return convert_to_textual_rows(p, False)
 
 def get_all_entries_keys(d1, d2):
     result = []
@@ -188,7 +182,7 @@ def generate_diff_table(map_1, map_2):
 
     _collect_diff(sections_diff, 'total', m1, m2)
 
-    return convert_diff_to_textual_rows(sections_diff['total'])
+    return convert_to_textual_rows(sections_diff['total'], True)
 
 
 if __name__ == "__main__":

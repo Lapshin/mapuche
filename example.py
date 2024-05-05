@@ -14,7 +14,10 @@ class TableApp(App):
         table = self.query_one(DataTable)
         table.cursor_type = next(cycle(["row"]))
         table.zebra_stripes = True
-        rows = generate_diff_table(sys.argv[1], sys.argv[2])
+        if len(sys.argv) == 2:
+            rows = parse_map_file(sys.argv[1])
+        elif len(sys.argv) == 3:
+            rows = generate_diff_table(sys.argv[1], sys.argv[2])
         table.add_columns(*rows[0])
         table.add_rows(rows[1:])
 
@@ -25,4 +28,6 @@ class TableApp(App):
 
 app = TableApp()
 if __name__ == "__main__":
+    if len(sys.argv) != 2 and len(sys.argv) != 3:
+        print("Wrong parameters count!")
     app.run()
