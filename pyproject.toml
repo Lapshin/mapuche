@@ -1,0 +1,27 @@
+[project]
+name = "mapuche"
+version = "0.0.1"
+authors = [
+    {name = "Alexey Lapshin", email = "alexeyfonlapshin@gmail.com"},
+]
+description = "Linker's map file browser"
+readme = "README.md"
+requires-python = ">=3.6"
+keywords = ["map", "elf", "linker"]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "textual==0.40.0",
+]
+
+[project.scripts]
+mapuche = "mapuche.mapuche:main"
+
+[tool.setuptools.packages.find]
+include = ["mapuche"]
+
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"

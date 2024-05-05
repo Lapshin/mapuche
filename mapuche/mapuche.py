@@ -3,8 +3,8 @@
 from itertools import cycle
 from os import sys
 from textual.app import App, ComposeResult
-from tree_table import DataTable
-from map_parse import parse_map_file, generate_diff_table
+from .tree_table import DataTable
+from .map_parse import parse_map_file, generate_diff_table
 
 class TableApp(App):
     def compose(self) -> ComposeResult:
@@ -26,8 +26,11 @@ class TableApp(App):
         table.cursor_type = next(cursors)
 
 
-app = TableApp()
-if __name__ == "__main__":
+def main():
     if len(sys.argv) != 2 and len(sys.argv) != 3:
         print("Wrong parameters count!")
+    app = TableApp()
     app.run()
+
+if __name__ == "__main__":
+    main()
