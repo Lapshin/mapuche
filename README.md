@@ -25,11 +25,12 @@ mapuche <elf.map> [elf_for_diff.map]
 
 ## Screenshot
 
-![mapuche diff maps](./imgs/mapuche_diff_demo.png)
+![mapuche diff maps](https://raw.githubusercontent.com/Lapshin/mapuche/master/imgs/mapuche_diff_demo.png)
 
 ## TODO list
 
 - [ ] implement `--help`/`--version` 
+- [ ] copy cell content
 - [ ] regex filters
 - [ ] columns sort
 - [ ] support expand/collapse by space button
@@ -37,4 +38,5 @@ mapuche <elf.map> [elf_for_diff.map]
 - [ ] cute alignment for `size`/`diff`/`delta` columns
 - [ ] assembler diff viewer in popup widget
 - [ ] support map files for ELFs without `-ffunction-sections`/`-fdata-sections`
+- [ ] reduce startup time
 - [ ] tests
