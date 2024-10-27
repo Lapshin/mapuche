@@ -249,8 +249,8 @@ class DataTable(ScrollView, Generic[CellType], can_focus=True):
     | space | Toggle the expand/collapsed space of the current item. |
     | up | Move the cursor up. |
     | down | Move the cursor down. |
-    | right | Move the cursor right. |
-    | left | Move the cursor left. |
+    | right | Expand current item. |
+    | left | Collapse current item. |
     """
 
     COMPONENT_CLASSES: ClassVar[set[str]] = {
@@ -2566,6 +2566,38 @@ class DataTable(ScrollView, Generic[CellType], can_focus=True):
         elif cursor_type == "cell":
             self.refresh_coordinate(self.hover_coordinate)
 
+    def _expand_action(self, row_index, desired_state=None) -> None:
+        row = self.ordered_rows[row_index]
+
+        if desired_state == Expand.collapsed:
+            current_expand_level = row.expand_level
+            if current_expand_level == 0:
+                return
+            while current_expand_level <= row.expand_level:
+                row_index -= 1
+                row = self.ordered_rows[row_index]
+            self.cursor_coordinate = Coordinate(row_index, self.cursor_coordinate.column)
+
+        if desired_state == Expand.expanded_root:
+            if row.expanded == Expand.collapsed:
+                row = self.ordered_rows[row_index]
+            self.cursor_coordinate = self.cursor_coordinate.down()
+            if desired_state == row.expanded:
+                return
+
+        self._new_rows.add(row.key)
+        if row.expanded == Expand.expanded_root:
+            row.expanded = Expand.collapsed
+        elif row.expanded == Expand.collapsed:
+            row.expanded = Expand.expanded_root
+        for k, _ in row.tree.items():
+            self._new_rows.add(k)
+            for c in self.ordered_columns:
+                self._updated_cells.add(CellKey(k, c.key))
+        self._update_count += 1
+        self._require_update_dimensions = True
+        self.refresh()
+
     async def _on_click(self, event: events.Click) -> None:
         self._set_hover_cursor(True)
         meta = event.style.meta
@@ -2591,19 +2623,7 @@ class DataTable(ScrollView, Generic[CellType], can_focus=True):
             )
             self.post_message(message)
         elif is_expand_label_click:
-            row = self.ordered_rows[row_index]
-            self._new_rows.add(row.key)
-            if row.expanded == Expand.expanded_root:
-                row.expanded = Expand.collapsed
-            elif row.expanded == Expand.collapsed:
-                row.expanded = Expand.expanded_root
-            for k, _ in row.tree.items():
-                self._new_rows.add(k)
-                for c in self.ordered_columns:
-                    self._updated_cells.add(CellKey(k, c.key))
-            self._update_count += 1
-            self._require_update_dimensions = True
-            self.refresh()
+            self._expand_action(row_index)
         elif self.show_cursor and self.cursor_type != "none":
             # Only post selection events if there is a visible row/col/cell cursor.
             self.cursor_coordinate = Coordinate(row_index, column_index)
@@ -2695,26 +2715,20 @@ class DataTable(ScrollView, Generic[CellType], can_focus=True):
 
     def action_cursor_right(self) -> None:
         self._set_hover_cursor(False)
-        cursor_type = self.cursor_type
-        if self.show_cursor and (cursor_type == "cell" or cursor_type == "column"):
-            self.cursor_coordinate = self.cursor_coordinate.right()
-            self._scroll_cursor_into_view(animate=True)
-        else:
-            super().action_scroll_right()
+        self._expand_action(self.cursor_coordinate.row, Expand.expanded_root)
 
     def action_cursor_left(self) -> None:
         self._set_hover_cursor(False)
-        cursor_type = self.cursor_type
-        if self.show_cursor and (cursor_type == "cell" or cursor_type == "column"):
-            self.cursor_coordinate = self.cursor_coordinate.left()
-            self._scroll_cursor_into_view(animate=True)
-        else:
-            super().action_scroll_left()
+        self._expand_action(self.cursor_coordinate.row, Expand.collapsed)
+
+    def action_toggle_node(self) -> None:
+        self._set_hover_cursor(False)
+        self._expand_action(self.cursor_coordinate.row)
 
     def action_select_cursor(self) -> None:
         self._set_hover_cursor(False)
         if self.show_cursor and self.cursor_type != "none":
-            self._post_selected_message()
+            self._expand_action(self.cursor_coordinate.row)
 
     def _post_selected_message(self):
         """Post the appropriate message for a selection based on the `cursor_type`."""
