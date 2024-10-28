@@ -2576,14 +2576,16 @@ class DataTable(ScrollView, Generic[CellType], can_focus=True):
             while current_expand_level <= row.expand_level:
                 row_index -= 1
                 row = self.ordered_rows[row_index]
-            self.cursor_coordinate = Coordinate(row_index, self.cursor_coordinate.column)
 
         if desired_state == Expand.expanded_root:
             if row.expanded == Expand.collapsed:
                 row = self.ordered_rows[row_index]
-            self.cursor_coordinate = self.cursor_coordinate.down()
+            if len(self.ordered_rows) >= row_index and row.expand_level <= self.ordered_rows[row_index + 1].expand_level:
+                self.cursor_coordinate = self.cursor_coordinate.down()
             if desired_state == row.expanded:
                 return
+        else:
+            self.cursor_coordinate = Coordinate(row_index, self.cursor_coordinate.column)
 
         self._new_rows.add(row.key)
         if row.expanded == Expand.expanded_root:
