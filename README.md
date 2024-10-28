@@ -33,7 +33,7 @@ mapuche <elf.map> [elf_for_diff.map]
 - [ ] copy cell content
 - [ ] regex filters
 - [ ] columns sort
-- [ ] support expand/collapse by space button
+- [x] support expand/collapse by left/right arrows and space button
 - [ ] move input section name from "name" to separate column
 - [ ] cute alignment for `size`/`diff`/`delta` columns
 - [ ] assembler diff viewer in popup widget
