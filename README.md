@@ -23,6 +23,9 @@ pip install mapuche
 mapuche <elf.map> [elf_for_diff.map]
 ```
 
+- Use keybord arrows and space button to navigate map tree.
+- Show/hide debug sections using checkbox at the top
+
 ## Screenshot
 
 ![mapuche diff maps](https://raw.githubusercontent.com/Lapshin/mapuche/master/imgs/mapuche_diff_demo.png)
@@ -30,13 +33,16 @@ mapuche <elf.map> [elf_for_diff.map]
 ## TODO list
 
 - [ ] implement `--help`/`--version` 
-- [ ] copy cell content
+- [x] copy cell content (press Shift and select using mouse as you would in other terminal apps.)
 - [ ] regex filters
-- [ ] columns sort
+- [x] button that hides debug sections
+- [x] columns sort
 - [x] support expand/collapse by left/right arrows and space button
 - [ ] move input section name from "name" to separate column
-- [ ] cute alignment for `size`/`diff`/`delta` columns
+- [x] cute alignment for `size`/`diff`/`delta` columns
 - [ ] assembler diff viewer in popup widget
 - [ ] support map files for ELFs without `-ffunction-sections`/`-fdata-sections`
-- [ ] reduce startup time
+- [x] reduce startup time
+- [ ] screenshot/copy all table
+- [ ] C++ demangling
 - [ ] tests

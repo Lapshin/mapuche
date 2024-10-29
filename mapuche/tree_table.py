@@ -1511,6 +1511,7 @@ class DataTable(ScrollView, Generic[CellType], can_focus=True):
         self.scroll_y = 0
         self.scroll_target_x = 0
         self.scroll_target_y = 0
+        self.rows_tree = {}
         return self
 
     def add_column(
