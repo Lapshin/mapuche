@@ -1,6 +1,6 @@
 [project]
 name = "mapuche"
-version = "0.0.1"
+version = "1.0.0"
 authors = [
     {name = "Alexey Lapshin", email = "alexeyfonlapshin@gmail.com"},
 ]
@@ -13,7 +13,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    "textual==0.40.0",
+    "textual==0.85.1",
 ]
 
 [project.scripts]
