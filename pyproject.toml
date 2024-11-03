@@ -1,6 +1,6 @@
 [project]
 name = "mapuche"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
     {name = "Alexey Lapshin", email = "alexeyfonlapshin@gmail.com"},
 ]
