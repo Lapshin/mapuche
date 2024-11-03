@@ -24,7 +24,7 @@ def get_indent(entry):
 
 def get_stylized_table_row(entry):
     row = entry.value.get_tuple()
-    row = (f'{get_indent(entry)}{row[0]}', Text(f"{row[1]:#010x}") , Align.right(Text(str(row[2]))), *row[3:])
+    row = (f'{get_indent(entry)}{row[0]}', Text(f"{row[1]:#010x}" if row[1] != 0 else '') , Align.right(Text(str(row[2]))), *row[3:])
     if len(row) == 5:
         row = (*row[0:3], Align.right(Text(str(row[3]))), Text(f"{row[4]: >7.2f}"))
     return row
