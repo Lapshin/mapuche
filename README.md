@@ -23,8 +23,9 @@ pip install mapuche
 mapuche <elf.map> [elf_for_diff.map]
 ```
 
-- Use keybord arrows and space button to navigate map tree.
-- Show/hide debug sections using checkbox at the top
+- Use keyboard arrows and the space bar, or a mouse, to navigate the map tree.
+- Click table header columns to sort the table.
+- Show/hide debug sections using checkbox at the top.
 
 ## Screenshot
 
@@ -35,6 +36,7 @@ mapuche <elf.map> [elf_for_diff.map]
 - [ ] implement `--help`/`--version` 
 - [x] copy cell content (press Shift and select using mouse as you would in other terminal apps.)
 - [ ] regex filters
+- [ ] map diff: highlight reduced sections with green and red otherwise (also, add shortcut "hide reduced")
 - [x] button that hides debug sections
 - [x] columns sort
 - [x] support expand/collapse by left/right arrows and space button
