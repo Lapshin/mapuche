@@ -18,6 +18,8 @@ from textual.events import Click, Mount
 from textual.reactive import Reactive
 from textual.widget import Widget
 
+
+from textual.coordinate import Coordinate
 from textual import events, on
 from rich.color import Color
 
@@ -106,12 +108,14 @@ class TableApp(App):
 
     async def _on_message(self, message: Message) -> None:
         message_class = message.__class__.__name__
-        if message_class == 'RowLabelSelected':
-            self.notify(
-                'Can not implement expand/collapse on click - see issue https://github.com/Textualize/textual/issues/4470',
-                title="!!!Use keybord arrows and space!!!",
-                severity="warning",
-            )
+        if message_class == 'RowLabelSelected' or message_class == 'RowSelected':
+            table = self.query_one(DataTable)
+            if message_class == 'RowLabelSelected':
+                new_cursor = Coordinate(message.row_index, table.cursor_coordinate.column)
+            else:
+                new_cursor = Coordinate(message.cursor_row, table.cursor_coordinate.column)
+            table.cursor_coordinate = new_cursor
+            self.call_after_refresh(self.collapse_expand_node)
         elif message_class == 'HeaderSelected':
             self.table_data.sort(message.column_index)
             self.reset_table()
