@@ -26,8 +26,15 @@ def parse_mapfile_entry(f, line):
     if len(split) == 1:
         return None
 
+    try:
+      address = int(split[0], 0)
+      size = int(split[1], 0)
+    except:
+      # address or size is not a number
+      return None
+
     source = split[2] if len(split) == 3 else None
-    return MapValue(name, int(split[0], 0), int(split[1], 16), source)
+    return MapValue(name, address, size, source)
 
 
 def set_size_for_all_nodes(data):
