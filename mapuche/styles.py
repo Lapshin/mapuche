@@ -22,9 +22,11 @@ def get_indent(entry):
         indent += ''
     return indent
 
-def get_stylized_table_row(entry):
+def get_stylized_table_row(entry, name=None):
     row = entry.value.get_tuple()
-    row = (f'{get_indent(entry)}{row[0]}', Text(f"{row[1]:#010x}" if row[1] != 0 else '') , Align.right(Text(str(row[2]))), *row[3:])
+    if name is None:
+        name = row[0]
+    row = (f'{get_indent(entry)}{name}', Text(f"{row[1]:#010x}" if row[1] != 0 else '') , Align.right(Text(str(row[2]))), *row[3:])
     if len(row) == 5:
         row = (*row[0:3], Align.right(Text(str(row[3]))), Text(f"{row[4]: >7.2f}"))
     return row

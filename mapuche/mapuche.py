@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+if __package__ in (None, ""):
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    __package__ = "mapuche"
+
 from itertools import cycle
 from os import sys
 from textual.app import App, ComposeResult, RenderResult
@@ -8,6 +14,7 @@ from textual.message import Message
 from textual.containers import Horizontal, HorizontalScroll, Container
 from textual.widgets import DataTable, Footer, Header, Checkbox, Label, Button
 from textual.reactive import Reactive
+from .demangle import demangle_map_name
 from .parser import get_table_header, get_table_data
 from .styles import get_stylized_table_header, get_stylized_table_row, get_stylized_row_label
 from textual.containers import ScrollableContainer
@@ -43,18 +50,18 @@ class MyHeader(ScrollableContainer, can_focus=False, can_focus_children=False):
 
     def __init__(
         self,
-        show_debug_button,
-        *,
+        *buttons,
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
     ):
-        self.show_debug_button=show_debug_button
+        self.buttons = buttons
         super().__init__(name=name, id=id, classes=classes)
 
     def compose(self):
         with Horizontal(id="top-right"):
-            yield self.show_debug_button
+            for button in self.buttons:
+                yield button
 
 class TableApp(App):
     map_diff = False
@@ -87,15 +94,16 @@ class TableApp(App):
         self.map_diff = len(sys.argv) == 3
         self.table_data = get_table_data(sys.argv[1], sys.argv[2] if self.map_diff else None)
         self.table_header = get_table_header(self.map_diff)
+        self.cxx_demangle = True
         self.show_debug = False
         self.show_debug_button = UnfocusableButton(self.get_show_debug_label(), id='show_debug')
+        self.demangle_button = UnfocusableButton(self.get_demangle_label(), id='cxx_demangle')
         self.hide_show_debug_sections()
-
         super().__init__()
 
     def compose(self) -> ComposeResult:
         # yield Checkbox("Grumman", True)
-        yield MyHeader(self.show_debug_button)
+        yield MyHeader(self.show_debug_button, self.demangle_button)
         yield DataTable()
 
     def on_mount(self) -> None:
@@ -127,7 +135,7 @@ class TableApp(App):
         for i, c in enumerate(data.children):
             if c.hidden:
                 continue
-            value_tuple = get_stylized_table_row(c)
+            value_tuple = get_stylized_table_row(c, self.display_name(c))
             if not self.map_diff:
                 value_tuple = value_tuple[0:3]
             rows.append([value_tuple, c])
@@ -136,22 +144,29 @@ class TableApp(App):
         return rows
 
     def reset_table(self):
-        total_row = get_stylized_table_row(self.table_data)
+        total_row = get_stylized_table_row(self.table_data, self.display_name(self.table_data))
         if not self.map_diff:
             total_row = total_row[0:3]
         rows = [(total_row, self.table_data)] + self.collect_rows(self.table_data)
         table = self.query_one(DataTable)
         scroll_x = table.scroll_x
         scroll_y = table.scroll_y
-        scroll_target_x = table.scroll_target_x
-        scroll_target_y = table.scroll_target_y
+        cursor = table.cursor_coordinate
+        # clear() moves the cursor to (0, 0) and scrolls that cell into view
+        # after the next refresh, which jumps the table to the top.
         table.clear()
         for i, (r, k) in enumerate(rows):
             table.add_row(*r, key=k, label=get_stylized_row_label(k))
-        table.scroll_x = scroll_x
-        table.scroll_y = scroll_y
-        table.scroll_target_x = scroll_target_x
-        table.scroll_target_y = scroll_target_y
+        if cursor.row < table.row_count:
+            table.set_reactive(DataTable.cursor_coordinate, cursor)
+
+        def restore_scroll() -> None:
+            table.scroll_x = scroll_x
+            table.scroll_y = scroll_y
+            table.scroll_target_x = scroll_x
+            table.scroll_target_y = scroll_y
+
+        table.call_after_refresh(restore_scroll)
 
     def collapse_expand_node(self, expand=None) -> None:
         table = self.query_one(DataTable)
@@ -185,14 +200,29 @@ class TableApp(App):
     def action_space_key(self) -> None:
         self.collapse_expand_node()
 
+    def display_name(self, node) -> str:
+        name = node.value.name
+        if self.cxx_demangle:
+            return demangle_map_name(name)
+        return name
+
     def get_show_debug_label(self) -> str:
         return f'[{"X" if self.show_debug else " "}] Debug sections'
+
+    def get_demangle_label(self) -> str:
+        return f'[{"X" if self.cxx_demangle else " "}] C++ demangle'
 
     @on(Button.Pressed, "#show_debug")
     def show_debug_pressed(self) -> None:
         self.show_debug = not self.show_debug
         self.show_debug_button.label = self.get_show_debug_label()
         self.hide_show_debug_sections()
+        self.reset_table()
+
+    @on(Button.Pressed, "#cxx_demangle")
+    def cxx_demangle_pressed(self) -> None:
+        self.cxx_demangle = not self.cxx_demangle
+        self.demangle_button.label = self.get_demangle_label()
         self.reset_table()
 
     def hide_show_debug_sections(self):

@@ -26,6 +26,7 @@ mapuche <elf.map> [elf_for_diff.map]
 - Use keyboard arrows and the space bar, or a mouse, to navigate the map tree.
 - Click table header columns to sort the table.
 - Show/hide debug sections using checkbox at the top.
+- Demangle C++ names using checkbox at the top (on by default).
 
 ## Screenshot
 
@@ -46,5 +47,5 @@ mapuche <elf.map> [elf_for_diff.map]
 - [ ] support map files for ELFs without `-ffunction-sections`/`-fdata-sections`
 - [x] reduce startup time
 - [ ] screenshot/copy all table
-- [ ] C++ demangling
+- [x] C++ demangling
 - [ ] tests
