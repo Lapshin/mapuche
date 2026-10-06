@@ -19,7 +19,7 @@ def parse_mapfile_entry(f, line):
     split = line.split()
     name = split[0]
     split.pop(0)
-    if len(split) == 0:
+    if f and len(split) == 0:
         line = f.readline()
         split = line.split()
 
@@ -27,29 +27,32 @@ def parse_mapfile_entry(f, line):
         return None
 
     try:
-      address = int(split[0], 0)
-      size = int(split[1], 0)
-    except:
-      # address or size is not a number
-      return None
-
-    source = split[2] if len(split) == 3 else None
-    return MapValue(name, address, size, source)
+        address = split[0]
+        size = split[1]
+        source = split[2] if len(split) == 3 else None
+        return MapValue(name, address, size, source)
+    except (IndexError, ValueError):
+        # address or size is not a number
+        return None
 
 
 def set_size_for_all_nodes(data):
     size = 0
     for c in data.children:
-        size += set_size_for_all_nodes(c)
-    if data.value.size == 0:
+        size += set_size_for_all_nodes(c) or 0
+    if not data.value.size:
         data.value.size = size
-    return data.value.size
+    return data.value.size or 0
 
 
 def parse_map_file(map_file):
     sections = TreeNode(MapValue())
     parse = False
     root_entry_name = ''
+    last_address = None
+    cur_parrent = None
+    prev_symbol = None
+    remain_section_size = -1
     with open(map_file, 'r') as f:
         while True:
             line = f.readline()
@@ -57,6 +60,8 @@ def parse_map_file(map_file):
                 break
             if not parse:
                 if "Linker script and memory map" in line:
+                    while not line.startswith('.'):  # Skip unwanted data, go to the first section
+                        line = f.readline()
                     parse = True
                 continue
             if "Cross Reference Table" in line:
@@ -66,12 +71,37 @@ def parse_map_file(map_file):
                 is_root_entry = True
             elif line.startswith(' .'):
                 is_root_entry = False
+            elif line.lstrip().startswith('0x'):
+                # Symbol size is the distance to the next symbol. The last
+                # symbol in a section keeps whatever size is still unaccounted.
+                split = line.split()
+                if len(split) != 2 or cur_parrent is None:
+                    continue
+                map_entry = MapValue(split[1], split[0], None, None)
+
+                if prev_symbol is not None:
+                    prev_symbol_size = map_entry.address - prev_symbol.address
+                    if prev_symbol_size < 0:
+                        prev_symbol_size = 0
+                    if remain_section_size >= 0 and prev_symbol_size > remain_section_size:
+                        prev_symbol_size = remain_section_size
+                    prev_symbol.size = prev_symbol_size
+                    remain_section_size -= prev_symbol_size
+
+                cur_parrent.add_child(map_entry)
+                prev_symbol = map_entry
+                continue
             else:
                 continue
 
             map_entry = parse_mapfile_entry(f, line)
             if map_entry is None:
                 continue
+
+            if prev_symbol is not None:
+                if prev_symbol.size is None:
+                    prev_symbol.size = remain_section_size if remain_section_size > 0 else 0
+                remain_section_size = -1
 
             if is_root_entry:
                 root_entry_name = map_entry.name
@@ -83,10 +113,14 @@ def parse_map_file(map_file):
                 if root == None:
                     root = root_prev.add_child(MapValue(lib))
                 root_prev = root
-                root = root_prev.find_child_by_name(obj_file)
-                if root == None:
-                    root = root_prev.add_child(MapValue(obj_file))
-                root.add_child(map_entry)
+                cur_parrent = root_prev.find_child_by_name(obj_file)
+                if cur_parrent == None:
+                    cur_parrent = root_prev.add_child(MapValue(obj_file))
+                cur_parrent = cur_parrent.add_child(map_entry)
+                remain_section_size = cur_parrent.value.size
+            prev_symbol = None
+    if prev_symbol is not None and prev_symbol.size is None:
+        prev_symbol.size = remain_section_size if remain_section_size > 0 else 0
     set_size_for_all_nodes(sections)
     return sections
 

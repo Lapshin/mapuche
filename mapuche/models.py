@@ -1,20 +1,32 @@
 class MapValue:
+    name = ''
+    address = 0
+    size = 0
     def __init__(self, name='Total', address=0, size=0, source='', diff=0, delta=0):
         self.name = name
-        self.address = address
-        self.size = size
+        if isinstance(address, str):
+            self.address = int(address, 0)
+        else:
+            self.address = address
+        if isinstance(size, str):
+            self.size = int(size, 0)
+        else:
+            self.size = size
         self.diff = diff
         self.delta = delta
         self.source = source
 
     def __repr__(self):
-        return f'MapValue(name={self.name})'
+        return f'MapValue(name={self.name},address={self.address},size={self.size})'
 
     def get_tuple(self):
         return tuple([self.name, self.address, self.size, self.diff, self.delta])
 
     def value(self, value_id):
         return self.get_tuple()[value_id]
+
+    def set_size(self, size):
+        self.size = size
 
 
 class TreeNode:
