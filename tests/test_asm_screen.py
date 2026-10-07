@@ -42,7 +42,7 @@ class AsmScreenTest(unittest.IsolatedAsyncioTestCase):
             await pilot.pause()
             screen = app.screen
             self.assertIsInstance(screen, AsmScreen)
-            headers = [str(widget.renderable) for widget in screen.query('.diff-header')]
+            headers = [str(widget.content) for widget in screen.query('.diff-header')]
             self.assertEqual(headers, ['ORIGINAL', 'CHANGED  +12'])
             labels = [str(box.label) for box in screen.query(Checkbox)]
             self.assertEqual(labels, ['show addresses', 'show source code'])

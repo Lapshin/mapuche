@@ -1,2 +1,2 @@
-textual==0.85.1
-cxxfilt==0.3.0
+textual~=8.2
+cxxfilt~=0.3

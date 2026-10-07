@@ -6,15 +6,15 @@ authors = [
 ]
 description = "Linker's map file browser"
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.10"
 keywords = ["map", "elf", "linker"]
 license = {text = "MIT"}
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    "textual==0.85.1",
-    "cxxfilt==0.3.0",
+    "textual~=8.2",
+    "cxxfilt~=0.3",
 ]
 
 [project.scripts]

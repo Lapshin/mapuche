@@ -34,6 +34,7 @@ from textual.coordinate import Coordinate
 from textual import events, on, work
 from textual.worker import WorkerCancelled, WorkerFailed
 from rich.color import Color
+from rich.style import Style
 from .asm import (
     scan_map_file,
     detect_objdump,
@@ -154,11 +155,17 @@ class DiffDocument(ScrollView):
         if width <= 0:
             width = self.size.width
         if row < 0 or row >= len(self.lines):
-            return Strip.blank(width)
+            return Strip.blank(width, self.rich_style)
         text = self.lines[row]
         style = self.extend_styles[row]
-        segments = list(text.render(self.app.console))
-        strip = Strip(segments).crop_extend(scroll_x, scroll_x + width, style)
+        # Rich omits a style when a line has no spans. Textual's monochrome
+        # filter (NO_COLOR) requires every segment style to be a Style.
+        blank = Style()
+        segments = [
+            segment if segment.style is not None else segment._replace(style=blank)
+            for segment in text.render(self.app.console)
+        ]
+        strip = Strip(segments).crop_extend(scroll_x, scroll_x + width, style or blank)
         return strip.apply_style(self.rich_style)
 
     def watch_scroll_y(self, old_value: float, new_value: float) -> None:
