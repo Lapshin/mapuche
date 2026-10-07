@@ -27,6 +27,7 @@ mapuche <elf.map> [elf_for_diff.map]
 - Click table header columns to sort the table.
 - Show/hide debug sections using checkbox at the top.
 - Demangle C++ names using checkbox at the top (on by default).
+- Press `a` to open an assembler diff for the selected row. This is available when the ELF named by `OUTPUT()` in the map file is on disk. `objdump` is taken from the toolchain `bin` directory recorded on the `libc.a` path; if that binary is missing, mapuche asks for a path. The viewer has checkboxes to show instruction addresses and to interleave source code (`objdump -S`). A data, rodata, or other non-code section opens a hex diff of the ELF bytes instead.
 
 ## Screenshot
 
@@ -43,9 +44,9 @@ mapuche <elf.map> [elf_for_diff.map]
 - [x] support expand/collapse by left/right arrows and space button
 - [ ] move input section name from "name" to separate column
 - [x] cute alignment for `size`/`diff`/`delta` columns
-- [ ] assembler diff viewer in popup widget
+- [x] assembler diff viewer in popup widget
 - [ ] support map files for ELFs without `-ffunction-sections`/`-fdata-sections`
 - [x] reduce startup time
 - [ ] screenshot/copy all table
 - [x] C++ demangling
-- [ ] tests
+- [x] tests (`python -m unittest discover -s tests`)

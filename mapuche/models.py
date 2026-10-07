@@ -15,6 +15,11 @@ class MapValue:
         self.diff = diff
         self.delta = delta
         self.source = source
+        # Both sides of a map diff. Display columns keep using address/size.
+        self.address_a = 0
+        self.size_a = 0
+        self.address_b = 0
+        self.size_b = 0
 
     def __repr__(self):
         return f'MapValue(name={self.name},address={self.address},size={self.size})'

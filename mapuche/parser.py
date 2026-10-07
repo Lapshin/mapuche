@@ -109,14 +109,19 @@ def parse_map_file(map_file):
             else:
                 lib, obj_file = parse_lib_and_objfile(map_entry.source)
                 root_prev = sections.find_child_by_name(root_entry_name)
-                root = root_prev.find_child_by_name(lib)
-                if root == None:
-                    root = root_prev.add_child(MapValue(lib))
-                root_prev = root
-                cur_parrent = root_prev.find_child_by_name(obj_file)
-                if cur_parrent == None:
-                    cur_parrent = root_prev.add_child(MapValue(obj_file))
-                cur_parrent = cur_parrent.add_child(map_entry)
+                # A loose .obj has no archive member. Skip that level instead of
+                # inserting a node whose name is None.
+                if lib:
+                    root = root_prev.find_child_by_name(lib)
+                    if root == None:
+                        root = root_prev.add_child(MapValue(lib))
+                    root_prev = root
+                if obj_file:
+                    found = root_prev.find_child_by_name(obj_file)
+                    if found == None:
+                        found = root_prev.add_child(MapValue(obj_file))
+                    root_prev = found
+                cur_parrent = root_prev.add_child(map_entry)
                 remain_section_size = cur_parrent.value.size
             prev_symbol = None
     if prev_symbol is not None and prev_symbol.size is None:
@@ -144,14 +149,31 @@ def _collect_diff(diff_entry, leaf, m1, m2):
     has_diff = s1 != s2
 
     if not has_diff:
+        # Totals can match while children still differ. Keep this node then.
+        # The root has no parent, so it cannot be removed.
+        if diff_entry.children or diff_entry.parent is None:
+            diff_entry.value.size = s1
+            diff_entry.value.address = m1.value.address if m1 else (m2.value.address if m2 else 0)
+            diff_entry.value.source = m1.value.address if m1 else (m2.value.address if m2 else 0)
+            diff_entry.value.diff = 0
+            diff_entry.value.delta = 0
+            diff_entry.value.address_a = m1.value.address if m1 else 0
+            diff_entry.value.size_a = s1 or 0
+            diff_entry.value.address_b = m2.value.address if m2 else 0
+            diff_entry.value.size_b = s2 or 0
+            return False
         diff_entry.parent.remove_child_by_name(diff_entry.value.name)
-        return has_diff
+        return False
 
     diff_entry.value.size = s1
     diff_entry.value.address = m1.value.address if m1 else m2.value.address
     diff_entry.value.source = m1.value.address if m1 else m2.value.address
     diff_entry.value.diff = s1 - s2
     diff_entry.value.delta = 100 if s2 == 0 else round((s1 - s2 ) / s2 * 100, 1)
+    diff_entry.value.address_a = m1.value.address if m1 else 0
+    diff_entry.value.size_a = s1 or 0
+    diff_entry.value.address_b = m2.value.address if m2 else 0
+    diff_entry.value.size_b = s2 or 0
     return True
 
 def get_all_childs(m1, m2):

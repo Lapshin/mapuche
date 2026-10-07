@@ -10,6 +10,8 @@ def demangle_map_name(name: str) -> str:
     ``.rodata._ZNK3Foo4whatEv.str1.4``. The mangled token is replaced in
     place; prefixes and GCC suffixes stay. Names are not mutated by the caller.
     """
+    if not isinstance(name, str):
+        return ''
     cached = _cache.get(name)
     if cached is not None:
         return cached
