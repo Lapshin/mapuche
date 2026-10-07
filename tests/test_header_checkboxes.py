@@ -2,10 +2,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from textual.widgets import Checkbox, DataTable
+from textual.widgets import Checkbox, DataTable, Label
 
 from mapuche.asm import format_asm_view
-from mapuche.mapuche import AsmScreen, TableApp
+from mapuche.mapuche import AsmScreen, MyHeader, TableApp
 
 
 def _write_map(directory):
@@ -29,7 +29,6 @@ def _style_key(box):
         str(styles.height),
         str(styles.border),
         str(styles.padding),
-        str(styles.background),
         str(styles.margin),
     )
 
@@ -49,6 +48,7 @@ class HeaderCheckboxTest(unittest.IsolatedAsyncioTestCase):
             async with app.run_test(size=(100, 24)) as pilot:
                 await pilot.pause()
                 boxes = list(app.query(Checkbox))
+                self.assertEqual(len(app.query('#compare-files')), 0)
                 self.assertEqual([str(box.label) for box in boxes], ['Debug sections', 'C++ demangle'])
                 self.assertEqual([box.value for box in boxes], [False, True])
                 for box in boxes:
@@ -63,6 +63,7 @@ class HeaderCheckboxTest(unittest.IsolatedAsyncioTestCase):
                     [_style_key(box) for box in boxes],
                     [_style_key(box) for box in asm_boxes],
                 )
+                self.assertNotEqual(boxes[0].styles.background, asm_boxes[0].styles.background)
                 await pilot.press('escape')
                 await pilot.pause()
 
@@ -76,6 +77,47 @@ class HeaderCheckboxTest(unittest.IsolatedAsyncioTestCase):
                 await pilot.click('#cxx_demangle')
                 await pilot.pause()
                 self.assertFalse(app.cxx_demangle)
+
+    async def test_compare_line_names_the_two_maps(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            new = root / 'firmware' / 'app.map'
+            old = root / 'previous' / 'app.map'
+            for path, size in ((new, '0x18'), (old, '0x10')):
+                path.parent.mkdir()
+                path.write_text(
+                    '\n'.join([
+                        'Linker script and memory map',
+                        '',
+                        '.discard',
+                        f'.text           0x40380000     {size}',
+                        f' .text.foo      0x40380000     {size} lib/libfoo.a(foo.c.obj)',
+                        '                0x40380000                foo',
+                    ]) + '\n'
+                )
+            app = TableApp(new, old)
+            async with app.run_test(size=(100, 24)) as pilot:
+                await pilot.pause()
+                header = app.query_one(MyHeader)
+                line = app.query_one('#compare-files')
+                box = app.query_one('#show_debug', Checkbox)
+                self.assertEqual(header.outer_size.height, 4)
+                self.assertLess(line.region.y, box.region.y)
+                self.assertEqual(app.query_one('#compare-diff', Label).content, 'Diff ==')
+                self.assertEqual(app.query_one('#compare-a', Label).content, 'firmware/app.map')
+                self.assertEqual(app.query_one('.compare-op', Label).content, '-')
+                self.assertEqual(app.query_one('#compare-b', Label).content, 'previous/app.map')
+                self.assertEqual(
+                    [label.content for label in app.query('.compare-quote')],
+                    ['"', '"', '"', '"'],
+                )
+                self.assertNotIn(str(root), app.query_one('#compare-a', Label).content)
+                table = app.query_one(DataTable)
+                name = app.query_one('#compare-a', Label)
+                closing = list(app.query('.compare-quote'))[1]
+                self.assertGreater(line.outer_size.width, table.virtual_size.width)
+                self.assertEqual(line.outer_size.width, header.size.width)
+                self.assertEqual(closing.region.x, name.region.right)
 
 
 if __name__ == '__main__':

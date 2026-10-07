@@ -984,8 +984,12 @@ def view_from_records(record_sets, spans, label_a, label_b, diff_mode, show_addr
 
 
 def map_label(path):
+    """Parent directory and file name. The panel and the asm diff use this instead of a full path."""
     file_path = Path(path)
-    return f'{file_path.parent.name}/{file_path.name}'
+    parent = file_path.parent.name
+    if not parent:
+        return file_path.name
+    return f'{parent}/{file_path.name}'
 
 
 _HEX_WORD = re.compile(r'[0-9a-fA-F]{2}|\s+|.')

@@ -178,6 +178,7 @@ class RegexFilterUiTest(unittest.IsolatedAsyncioTestCase):
                 icon = app.query_one('#filter-icon', Label)
                 boxes = list(app.query(Checkbox))
                 self.assertEqual(header.parent.size.height, 2)
+                self.assertEqual(header.parent.outer_size.height, 3)
                 self.assertEqual(box.size.height, 1)
                 self.assertEqual(box.size.width, 32)
                 self.assertEqual(box.max_length, 32)

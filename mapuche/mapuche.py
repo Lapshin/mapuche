@@ -380,17 +380,42 @@ class MyHeader(ScrollableContainer, can_focus=False, can_focus_children=True):
     MyHeader {
         dock: top;
         width: 100%;
-        background: $panel;
+        background: $boost;
         color: $text;
-        height: 2;
+        height: 3;
+        border-bottom: tall $accent;
+    }
+    MyHeader.comparing {
+        height: 4;
     }
     MyHeader Checkbox {
         height: 1;
         width: auto;
         border: none;
         padding: 0 1;
-        background: transparent;
+        background: $primary 22%;
         margin: 0 1 0 0;
+    }
+    #compare-files {
+        height: 1;
+        width: 1fr;
+        padding: 0 1;
+    }
+    .compare-name {
+        width: auto;
+        height: 1;
+        color: $text-muted;
+    }
+    .compare-note, .compare-op, .compare-quote {
+        width: auto;
+        height: 1;
+        color: $text-muted;
+    }
+    .compare-note {
+        padding: 0 1 0 0;
+    }
+    .compare-op {
+        padding: 0 1;
     }
     #header-bar {
         height: 1;
@@ -400,12 +425,15 @@ class MyHeader(ScrollableContainer, can_focus=False, can_focus_children=True):
         height: 1;
         width: auto;
         margin: 0 0 0 1;
+        padding: 0 1;
+        background: $accent 14%;
     }
     #filter-icon {
         width: auto;
         height: 1;
         padding: 0 1 0 0;
         content-align: left middle;
+        background: $accent 14%;
     }
     #name-filter {
         width: 32;
@@ -413,7 +441,7 @@ class MyHeader(ScrollableContainer, can_focus=False, can_focus_children=True):
         margin: 0;
         padding: 0;
         border: none;
-        background: $panel;
+        background: $accent 14%;
         color: $text;
     }
     #name-filter:focus, #name-filter.-invalid {
@@ -421,8 +449,11 @@ class MyHeader(ScrollableContainer, can_focus=False, can_focus_children=True):
         height: 1;
         padding: 0;
     }
+    #name-filter:focus {
+        background: $accent 28%;
+    }
     #name-filter.-invalid {
-        background-tint: $error 20%;
+        background-tint: $error 30%;
     }
     """
 
@@ -431,14 +462,29 @@ class MyHeader(ScrollableContainer, can_focus=False, can_focus_children=True):
     def __init__(
         self,
         *buttons,
+        compare=None,
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
     ):
         self.buttons = buttons
+        self.compare = compare
+        if compare:
+            classes = f'{classes} comparing' if classes else 'comparing'
         super().__init__(name=name, id=id, classes=classes)
 
     def compose(self):
+        if self.compare:
+            label_a, label_b = self.compare
+            with Horizontal(id='compare-files'):
+                yield Label('Diff ==', id='compare-diff', classes='compare-note')
+                yield Label('"', classes='compare-quote')
+                yield Label(label_a, id='compare-a', classes='compare-name')
+                yield Label('"', classes='compare-quote')
+                yield Label('-', classes='compare-op')
+                yield Label('"', classes='compare-quote')
+                yield Label(label_b, id='compare-b', classes='compare-name')
+                yield Label('"', classes='compare-quote')
         with Horizontal(id='header-bar'):
             for button in self.buttons:
                 yield button
@@ -524,9 +570,11 @@ class TableApp(App):
     def compose(self) -> ComposeResult:
         # yield Checkbox("Grumman", True)
         buttons = [self.show_debug_button, self.demangle_button]
+        compare = None
         if self.map_diff:
             buttons.append(self.hide_reduced_button)
-        yield MyHeader(*buttons)
+            compare = (map_label(self.map_paths[0]), map_label(self.map_paths[1]))
+        yield MyHeader(*buttons, compare=compare)
         yield MapTable()
         yield Footer()
 
