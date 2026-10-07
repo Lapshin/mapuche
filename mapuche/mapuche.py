@@ -411,8 +411,18 @@ class MyHeader(ScrollableContainer, can_focus=False, can_focus_children=True):
         width: 32;
         height: 1;
         margin: 0;
+        padding: 0;
+        border: none;
         background: $panel;
         color: $text;
+    }
+    #name-filter:focus, #name-filter.-invalid {
+        border: none;
+        height: 1;
+        padding: 0;
+    }
+    #name-filter.-invalid {
+        background-tint: $error 20%;
     }
     """
 
@@ -437,7 +447,6 @@ class MyHeader(ScrollableContainer, can_focus=False, can_focus_children=True):
             yield FilterInput(
                 placeholder='regex',
                 id='name-filter',
-                compact=True,
                 max_length=32,
             )
 
