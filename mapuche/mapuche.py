@@ -490,7 +490,7 @@ class TableApp(App):
             elf, libc = scan_map_file(path)
             self.elf_paths.append(elf)
             self.libc_paths.append(libc)
-        self.objdump_path = None
+        self.objdump_paths = None
         self._objdump_probed = False
         self._asm_cache = {}
         self._elf_cache = {}
@@ -725,8 +725,8 @@ class TableApp(App):
             self.notify('No code in this row', title='asm')
             return
         if targets:
-            objdump = await self._ensure_objdump()
-            if objdump is None:
+            objdumps = await self._ensure_objdumps()
+            if not objdumps:
                 return
         if self.cxx_demangle:
             for span in hex_spans:
@@ -738,7 +738,7 @@ class TableApp(App):
         self.notify('disassembling…' if targets else 'reading…', title='asm', timeout=30)
         try:
             if targets:
-                text = await self._disassemble(objdump, targets, self.cxx_demangle).wait()
+                text = await self._disassemble(objdumps, targets, self.cxx_demangle).wait()
                 hex_blobs = None
                 hex_labels = ('', '')
             else:
@@ -752,7 +752,7 @@ class TableApp(App):
             if generation != self._asm_open_gen:
                 return
             if targets:
-                self.objdump_path = None
+                self.objdump_paths = None
                 self._objdump_probed = True
             self.clear_notifications()
             self.notify(str(exc.error), title='asm', severity='error', timeout=8)
@@ -763,20 +763,26 @@ class TableApp(App):
         self.clear_notifications()
         self.push_screen(AsmScreen(title, text, targets, size_diff, hex_blobs, hex_labels))
 
-    async def _ensure_objdump(self):
-        if self.objdump_path is not None:
-            return self.objdump_path
+    async def _ensure_objdumps(self):
+        """One objdump per opened map. Xtensa and RISC-V maps stay on their own tools."""
+        if self.objdump_paths and all(self.objdump_paths):
+            return self.objdump_paths
+        found = list(self.objdump_paths or [])
         if not self._objdump_probed:
             self._objdump_probed = True
-            found = detect_objdump(self.libc_paths)
-            if found is not None:
-                self.objdump_path = found
+            found = [detect_objdump([libc]) for libc in self.libc_paths]
+            if all(found):
+                self.objdump_paths = found
                 return found
-        chosen = await self.push_screen_wait(ObjdumpPathScreen())
-        if not chosen:
-            return None
-        self.objdump_path = chosen
-        return chosen
+        if len(found) != len(self.libc_paths):
+            found = [None] * len(self.libc_paths)
+        if any(path is None for path in found):
+            chosen = await self.push_screen_wait(ObjdumpPathScreen())
+            if not chosen:
+                return None
+            found = [path or chosen for path in found]
+        self.objdump_paths = found
+        return found
 
     def _asm_labels(self):
         label_a = map_label(self.map_paths[0])
@@ -806,10 +812,10 @@ class TableApp(App):
         return view, blobs, (label_a, label_b)
 
     @work(thread=True, group='asm-objdump', exit_on_error=False, description='disassemble')
-    def _disassemble(self, objdump, targets, demangle):
+    def _disassemble(self, objdumps, targets, demangle):
         records = [
             load_disassembly(objdump, elf, demangle, False, self._asm_cache)
-            for elf in self.elf_paths
+            for objdump, elf in zip(objdumps, self.elf_paths)
         ]
         label_a, label_b = self._asm_labels()
         return view_from_records(records, targets, label_a, label_b, bool(self.map_diff), False, False)
@@ -817,8 +823,8 @@ class TableApp(App):
     @work(thread=True, exclusive=True, group='asm-rebuild', exit_on_error=False, description='rebuild asm')
     def rebuild_asm_view(self, targets, show_addresses, show_source):
         records = [
-            load_disassembly(self.objdump_path, elf, self.cxx_demangle, show_source, self._asm_cache)
-            for elf in self.elf_paths
+            load_disassembly(objdump, elf, self.cxx_demangle, show_source, self._asm_cache)
+            for objdump, elf in zip(self.objdump_paths, self.elf_paths)
         ]
         label_a, label_b = self._asm_labels()
         return view_from_records(

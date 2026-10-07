@@ -65,10 +65,34 @@ def toolchain_bin_dir(libc_path):
     return None
 
 
-def find_objdump_in(bin_dir):
+def xtensa_objdump_triplet(libc_path):
+    """Chip triplet from a Xtensa picolibc multilib path.
+
+    ``.../xtensa-esp-elf/lib/esp32s3/no-rtti/libc.a`` selects
+    ``xtensa-esp32s3-elf``. The first directory under ``lib`` is the target.
+    """
+    if not libc_path:
+        return None
+    parts = libc_path.replace('\\', '/').split('/')
+    for index, part in enumerate(parts[:-1]):
+        if part != 'lib' or index == 0 or parts[index - 1] != 'xtensa-esp-elf':
+            continue
+        target = parts[index + 1]
+        if not target or target == 'libc.a':
+            continue
+        return f'xtensa-{target}-elf'
+    return None
+
+
+def find_objdump_in(bin_dir, triplet=None):
     if bin_dir is None or not Path(bin_dir).is_dir():
         return None
-    files = [path for path in Path(bin_dir).glob('*objdump') if path.is_file()]
+    directory = Path(bin_dir)
+    if triplet:
+        exact = directory / f'{triplet}-objdump'
+        if exact.is_file():
+            return exact
+    files = [path for path in directory.glob('*objdump') if path.is_file()]
     if not files:
         return None
     prefixed = [path for path in files if path.name.endswith('-objdump')]
@@ -77,8 +101,14 @@ def find_objdump_in(bin_dir):
 
 
 def detect_objdump(libc_paths):
+    """Return one objdump for these libc paths.
+
+    A Xtensa multilib path selects ``xtensa-<chip>-elf-objdump``. Any other
+    architecture keeps the prefixed objdump in that toolchain's ``bin``.
+    Mixed maps must be resolved one libc path at a time.
+    """
     for libc in libc_paths:
-        found = find_objdump_in(toolchain_bin_dir(libc))
+        found = find_objdump_in(toolchain_bin_dir(libc), xtensa_objdump_triplet(libc))
         if found is not None:
             return found
     return None

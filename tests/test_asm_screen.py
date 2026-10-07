@@ -94,7 +94,7 @@ class CancelledAsmOpenTest(unittest.IsolatedAsyncioTestCase):
         new = 'test/build_new/test_cxx_exception.map'
         old = 'test/build_old/test_cxx_exception.map'
         app = TableApp(new, old)
-        app.objdump_path = Path('/bin/true')
+        app.objdump_paths = [Path('/bin/true'), Path('/bin/true')]
         app._objdump_probed = True
 
         def slow_view(*_args, **_kwargs):
@@ -112,7 +112,7 @@ class CancelledAsmOpenTest(unittest.IsolatedAsyncioTestCase):
                         break
                     await pilot.pause(0.05)
                 self.assertIsInstance(app.screen, AsmScreen)
-                self.assertEqual(app.objdump_path, Path('/bin/true'))
+                self.assertEqual(app.objdump_paths, [Path('/bin/true'), Path('/bin/true')])
                 await pilot.pause()
                 notices = [toast.render().plain for toast in app.screen.query(Toast)]
                 self.assertFalse(any('disassembling' in text for text in notices))

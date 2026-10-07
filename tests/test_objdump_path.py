@@ -11,6 +11,7 @@ from mapuche.asm import (
     run_objdump,
     scan_map_file,
     toolchain_bin_dir,
+    xtensa_objdump_triplet,
 )
 
 
@@ -60,6 +61,39 @@ class ObjdumpPathTest(unittest.TestCase):
             prefixed.write_text('')
             self.assertEqual(find_objdump_in(bin_dir), prefixed)
             self.assertEqual(detect_objdump([f'{tmp}/tool/bin/../libc.a']), prefixed)
+
+    def test_xtensa_triplet_comes_from_the_multilib_directory(self):
+        libc = (
+            '/home/alex/.espressif/tools/xtensa-esp-elf/esp-16.1.0_20260609/'
+            'xtensa-esp-elf/bin/../xtensa-esp-elf/../picolibc/xtensa-esp-elf/'
+            'lib/esp32s3/no-rtti/libc.a'
+        )
+        self.assertEqual(xtensa_objdump_triplet(libc), 'xtensa-esp32s3-elf')
+        self.assertIsNone(xtensa_objdump_triplet('/tool/bin/../picolibc/rv32/libc.a'))
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / 'xtensa-esp-elf' / 'bin'
+            bin_dir.mkdir(parents=True)
+            generic = bin_dir / 'xtensa-esp-elf-objdump'
+            esp32 = bin_dir / 'xtensa-esp32-elf-objdump'
+            esp32s3 = bin_dir / 'xtensa-esp32s3-elf-objdump'
+            for path in (generic, esp32, esp32s3):
+                path.write_text('')
+            mapped = (
+                f'{tmp}/xtensa-esp-elf/bin/../xtensa-esp-elf/../picolibc/'
+                'xtensa-esp-elf/lib/esp32s3/no-rtti/libc.a'
+            )
+            self.assertEqual(detect_objdump([mapped]), esp32s3)
+            riscv_bin = Path(tmp) / 'riscv32-esp-elf' / 'bin'
+            riscv_bin.mkdir(parents=True)
+            riscv = riscv_bin / 'riscv32-esp-elf-objdump'
+            riscv.write_text('')
+            riscv_libc = f'{tmp}/riscv32-esp-elf/bin/../picolibc/riscv32-esp-elf/lib/rv32imc/libc.a'
+            self.assertEqual(detect_objdump([riscv_libc]), riscv)
+            self.assertEqual(detect_objdump([mapped, riscv_libc]), esp32s3)
+            self.assertEqual(
+                [detect_objdump([path]) for path in (mapped, riscv_libc)],
+                [esp32s3, riscv],
+            )
 
     def test_user_path_may_be_a_binary_or_a_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
