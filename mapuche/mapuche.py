@@ -7,6 +7,7 @@ if __package__ in (None, ""):
     __package__ = "mapuche"
 
 import argparse
+import re
 from importlib.metadata import PackageNotFoundError, version
 from itertools import cycle
 from textual.app import App, ComposeResult, RenderResult
@@ -365,14 +366,23 @@ class AsmScreen(ModalScreen):
         self._install_view(view)
 
 
-class MyHeader(ScrollableContainer, can_focus=False, can_focus_children=False):
+class FilterInput(Input):
+    """Regex filter. Escape returns to the table and leaves the pattern in place."""
+
+    BINDINGS = [Binding('escape', 'leave_filter', 'Leave filter', show=False)]
+
+    def action_leave_filter(self) -> None:
+        self.app.query_one(DataTable).focus()
+
+
+class MyHeader(ScrollableContainer, can_focus=False, can_focus_children=True):
     DEFAULT_CSS = """
     MyHeader {
         dock: top;
         width: 100%;
-        background: $foreground 5%;
+        background: $panel;
         color: $text;
-        height: 1;
+        height: 2;
     }
     MyHeader Checkbox {
         height: 1;
@@ -382,9 +392,27 @@ class MyHeader(ScrollableContainer, can_focus=False, can_focus_children=False):
         background: transparent;
         margin: 0 1 0 0;
     }
-    #top-right {
+    #header-bar {
+        height: 1;
+        width: 1fr;
+    }
+    #filter-row {
         height: 1;
         width: auto;
+        margin: 0 0 0 1;
+    }
+    #filter-icon {
+        width: auto;
+        height: 1;
+        padding: 0 1 0 0;
+        content-align: left middle;
+    }
+    #name-filter {
+        width: 32;
+        height: 1;
+        margin: 0;
+        background: $panel;
+        color: $text;
     }
     """
 
@@ -401,9 +429,17 @@ class MyHeader(ScrollableContainer, can_focus=False, can_focus_children=False):
         super().__init__(name=name, id=id, classes=classes)
 
     def compose(self):
-        with Horizontal(id="top-right"):
+        with Horizontal(id='header-bar'):
             for button in self.buttons:
                 yield button
+        with Horizontal(id='filter-row'):
+            yield Label('🔍', id='filter-icon')
+            yield FilterInput(
+                placeholder='regex',
+                id='name-filter',
+                compact=True,
+                max_length=32,
+            )
 
 class MapTable(DataTable):
     def _get_row_style(self, row_index, base_style):
@@ -437,6 +473,7 @@ class TableApp(App):
         Binding("left", "left_arrow_key", "collapse", False),
         Binding("space", "space_key", "expand/collapse", False),
         Binding("a", "asm_diff", "asm"),
+        Binding("slash", "focus_filter", "filter"),
     ]
 
     DEBUG_SECTIONS = [
@@ -462,6 +499,10 @@ class TableApp(App):
         self.cxx_demangle = True
         self.show_debug = False
         self.hide_reduced = False
+        self._name_filter = None
+        self._filter_visible = None
+        # Nodes opened only to reveal a match. Cleared when the pattern no longer needs them.
+        self._auto_expanded = set()
         self.show_debug_button = Checkbox('Debug sections', value=False, id='show_debug')
         self.demangle_button = Checkbox('C++ demangle', value=True, id='cxx_demangle')
         self.hide_reduced_button = Checkbox('Hide reduced', value=False, id='hide_reduced')
@@ -490,6 +531,7 @@ class TableApp(App):
         table.fixed_rows = 1
         table.add_columns(*get_stylized_table_header(*self.table_header))
         self.reset_table()
+        table.focus()
 
     async def _on_message(self, message: Message) -> None:
         message_class = message.__class__.__name__
@@ -507,10 +549,84 @@ class TableApp(App):
 
         await super()._on_message(message)
 
+    def _row_hidden(self, node):
+        return node.hidden or (self.hide_reduced and fully_reduced(node))
+
+    def _matches_filter(self, node, pattern, shown):
+        if pattern.search(shown):
+            return True
+        raw = node.value.name
+        if isinstance(raw, str) and raw != shown and pattern.search(raw):
+            return True
+        source = node.value.source
+        return isinstance(source, str) and bool(source) and pattern.search(source) is not None
+
+    def _plan_filter(self, pattern):
+        """Rows to keep, and ancestors to open so a match is on screen.
+
+        A matching node keeps its descendants, but they stay collapsed until
+        the user opens that node. A match under a non-matching parent keeps
+        the parent and opens it.
+        """
+        visible = set()
+        to_expand = set()
+
+        def walk(node, ancestor_matched):
+            if self._row_hidden(node):
+                return False
+            shown = self.display_name(node)
+            self_match = self._matches_filter(node, pattern, shown)
+            under_match = ancestor_matched or self_match
+            child_hit = False
+            for child in node.children:
+                if walk(child, under_match):
+                    child_hit = True
+            if under_match or child_hit:
+                visible.add(node)
+            if child_hit and not self_match and not ancestor_matched:
+                to_expand.add(node)
+            return self_match or child_hit
+
+        for child in self.table_data.children:
+            walk(child, False)
+        return visible, to_expand
+
+    def _prepare_filter(self):
+        if self._name_filter is None:
+            self._filter_visible = None
+            return
+        self._filter_visible, _to_expand = self._plan_filter(self._name_filter)
+
+    def _sync_filter_expansion(self):
+        if self._name_filter is None:
+            for node in self._auto_expanded:
+                node.expand = False
+            self._auto_expanded.clear()
+            return
+        _visible, to_expand = self._plan_filter(self._name_filter)
+        for node in list(self._auto_expanded):
+            if node not in to_expand:
+                node.expand = False
+                self._auto_expanded.discard(node)
+        for node in to_expand:
+            if not node.expand:
+                node.expand = True
+                self._auto_expanded.add(node)
+
+    def _refresh_for_filter(self):
+        self._sync_filter_expansion()
+        if self.is_mounted and self.query(DataTable):
+            self.reset_table()
+
     def collect_rows(self, data):
+        if data.is_root():
+            self._prepare_filter()
+        visible = self._filter_visible
         rows = []
         for c in data.children:
-            if c.hidden or (self.hide_reduced and fully_reduced(c)):
+            if self._row_hidden(c):
+                continue
+            if visible is not None and c not in visible:
                 continue
             value_tuple = get_stylized_table_row(c, self.display_name(c))
             if not self.map_diff:
@@ -552,6 +668,7 @@ class TableApp(App):
         if row_key.value.is_root():
             return
         if expand == None:
+            self._auto_expanded.discard(row_key.value)
             row_key.value.set_expand()
         else:
             if expand:
@@ -564,6 +681,7 @@ class TableApp(App):
                 while cursor_coordinate.row > 0 and current_level <= row_key.value.level:
                     cursor_coordinate = cursor_coordinate.up()
                     row_key, _ = table.coordinate_to_cell_key(cursor_coordinate)
+            self._auto_expanded.discard(row_key.value)
             row_key.value.set_expand(expand)
         self.reset_table()
         table.cursor_coordinate = cursor_coordinate
@@ -576,6 +694,9 @@ class TableApp(App):
 
     def action_space_key(self) -> None:
         self.collapse_expand_node()
+
+    def action_focus_filter(self) -> None:
+        self.query_one('#name-filter', FilterInput).focus()
 
     def check_action(self, action, parameters):
         if action == 'asm_diff' and not self._elfs_ready():
@@ -714,17 +835,39 @@ class TableApp(App):
     def show_debug_pressed(self, event: Checkbox.Changed) -> None:
         self.show_debug = event.value
         self.hide_show_debug_sections()
-        self.reset_table()
+        self._refresh_for_filter()
 
     @on(Checkbox.Changed, "#cxx_demangle")
     def cxx_demangle_pressed(self, event: Checkbox.Changed) -> None:
         self.cxx_demangle = event.value
-        self.reset_table()
+        self._refresh_for_filter()
 
     @on(Checkbox.Changed, "#hide_reduced")
     def hide_reduced_pressed(self, event: Checkbox.Changed) -> None:
         self.hide_reduced = event.value
-        self.reset_table()
+        self._refresh_for_filter()
+
+    @on(Input.Changed, '#name-filter')
+    def name_filter_changed(self, event: Input.Changed) -> None:
+        text = event.value
+        box = event.input
+        if text == '':
+            self._name_filter = None
+            box.remove_class('-invalid')
+        else:
+            try:
+                compiled = re.compile(text)
+            except re.error:
+                box.add_class('-invalid')
+                return
+            self._name_filter = compiled
+            box.remove_class('-invalid')
+        self._refresh_for_filter()
+
+    @on(Input.Submitted, '#name-filter')
+    def name_filter_submitted(self, event: Input.Submitted) -> None:
+        event.stop()
+        self.query_one(DataTable).focus()
 
     def hide_show_debug_sections(self):
         for k in self.table_data.children:
