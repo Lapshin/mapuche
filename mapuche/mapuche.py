@@ -6,8 +6,9 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     __package__ = "mapuche"
 
+import argparse
+from importlib.metadata import PackageNotFoundError, version
 from itertools import cycle
-from os import sys
 from textual.app import App, ComposeResult, RenderResult
 from textual.binding import Binding
 from textual.message import Message
@@ -422,10 +423,7 @@ class TableApp(App):
         '.debug_',
     ]
 
-    def __init__(self, map_file=None, diff_map_file=None):
-        if map_file is None:
-            map_file = sys.argv[1]
-            diff_map_file = sys.argv[2] if len(sys.argv) == 3 else None
+    def __init__(self, map_file, diff_map_file=None):
         self.map_diff = diff_map_file is not None
         self.map_paths = [map_file] if not self.map_diff else [map_file, diff_map_file]
         self.elf_paths = []
@@ -698,8 +696,40 @@ class TableApp(App):
             if k.value.name.startswith(tuple(TableApp.DEBUG_SECTIONS)):
                 k.hidden = not self.show_debug
 
-def main():
-    app = TableApp()
+def package_version():
+    try:
+        return version('mapuche')
+    except PackageNotFoundError:
+        return 'unknown'
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        prog='mapuche',
+        description="Linker's map file browser",
+    )
+    parser.add_argument(
+        '--version',
+        action='version',
+        version=f'mapuche {package_version()}',
+    )
+    parser.add_argument(
+        'map_file',
+        metavar='elf.map',
+        help='map file of an ELF built with -ffunction-sections and -fdata-sections',
+    )
+    parser.add_argument(
+        'diff_map_file',
+        nargs='?',
+        metavar='elf_for_diff.map',
+        help='second map file to compare against',
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    app = TableApp(args.map_file, args.diff_map_file)
     app.run()
 
 if __name__ == "__main__":

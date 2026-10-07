@@ -21,6 +21,8 @@ pip install mapuche
 
 ```
 mapuche <elf.map> [elf_for_diff.map]
+mapuche --help
+mapuche --version
 ```
 
 - Use keyboard arrows and the space bar, or a mouse, to navigate the map tree.
@@ -35,7 +37,7 @@ mapuche <elf.map> [elf_for_diff.map]
 
 ## TODO list
 
-- [ ] implement `--help`/`--version` 
+- [x] implement `--help`/`--version` 
 - [x] copy cell content (press Shift and select using mouse as you would in other terminal apps.)
 - [ ] regex filters
 - [ ] map diff: highlight reduced sections with green and red otherwise (also, add shortcut "hide reduced")
