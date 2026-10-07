@@ -21,7 +21,7 @@ from textual.widgets import DataTable, Footer, Header, Checkbox, Label, Button, 
 from textual.reactive import Reactive
 from .demangle import demangle_map_name
 from .parser import get_table_header, get_table_data
-from .styles import get_stylized_table_header, get_stylized_table_row, get_stylized_row_label
+from .styles import get_stylized_table_header, get_stylized_table_row, get_stylized_row_label, row_style
 from textual.containers import ScrollableContainer
 
 from textual.app import RenderResult
@@ -405,6 +405,27 @@ class MyHeader(ScrollableContainer, can_focus=False, can_focus_children=False):
             for button in self.buttons:
                 yield button
 
+class MapTable(DataTable):
+    def _get_row_style(self, row_index, base_style):
+        style = super()._get_row_style(row_index, base_style)
+        if row_index < 0:
+            return style
+        highlight = row_style(self._row_locations.get_key(row_index).value)
+        if highlight is None:
+            return style
+        return style + highlight
+
+
+def fully_reduced(node):
+    """Subtree that only shrank. A shrunk parent with any growth inside stays."""
+    if node.value.diff > 0:
+        return False
+    for child in node.children:
+        if not fully_reduced(child):
+            return False
+    return node.value.diff < 0 or bool(node.children)
+
+
 class TableApp(App):
     map_diff = False
     rows = None
@@ -440,21 +461,30 @@ class TableApp(App):
         self.table_header = get_table_header(self.map_diff)
         self.cxx_demangle = True
         self.show_debug = False
+        self.hide_reduced = False
         self.show_debug_button = Checkbox('Debug sections', value=False, id='show_debug')
         self.demangle_button = Checkbox('C++ demangle', value=True, id='cxx_demangle')
+        self.hide_reduced_button = Checkbox('Hide reduced', value=False, id='hide_reduced')
         self.show_debug_button.can_focus = False
         self.demangle_button.can_focus = False
+        self.hide_reduced_button.can_focus = False
         self.hide_show_debug_sections()
         super().__init__()
 
     def compose(self) -> ComposeResult:
         # yield Checkbox("Grumman", True)
-        yield MyHeader(self.show_debug_button, self.demangle_button)
-        yield DataTable()
+        buttons = [self.show_debug_button, self.demangle_button]
+        if self.map_diff:
+            buttons.append(self.hide_reduced_button)
+        yield MyHeader(*buttons)
+        yield MapTable()
         yield Footer()
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
+        # Cell color has to win on the selected row, or the cursor wipes green/red.
+        if self.map_diff:
+            table.cursor_foreground_priority = 'renderable'
         table.cursor_type = 'row'
         table.zebra_stripes = True
         table.fixed_rows = 1
@@ -479,8 +509,8 @@ class TableApp(App):
 
     def collect_rows(self, data):
         rows = []
-        for i, c in enumerate(data.children):
-            if c.hidden:
+        for c in data.children:
+            if c.hidden or (self.hide_reduced and fully_reduced(c)):
                 continue
             value_tuple = get_stylized_table_row(c, self.display_name(c))
             if not self.map_diff:
@@ -689,6 +719,11 @@ class TableApp(App):
     @on(Checkbox.Changed, "#cxx_demangle")
     def cxx_demangle_pressed(self, event: Checkbox.Changed) -> None:
         self.cxx_demangle = event.value
+        self.reset_table()
+
+    @on(Checkbox.Changed, "#hide_reduced")
+    def hide_reduced_pressed(self, event: Checkbox.Changed) -> None:
+        self.hide_reduced = event.value
         self.reset_table()
 
     def hide_show_debug_sections(self):

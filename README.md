@@ -29,6 +29,7 @@ mapuche --version
 - Click table header columns to sort the table.
 - Show/hide debug sections using checkbox at the top.
 - Demangle C++ names using checkbox at the top (on by default).
+- In a map diff, smaller sections are green and larger sections are red. Tick "Hide reduced" at the top to hide reduced sections. A shrunk section stays on screen when a child inside it grew.
 - Press `a` to open an assembler diff for the selected row. This is available when the ELF named by `OUTPUT()` in the map file is on disk. `objdump` is taken from the toolchain `bin` directory recorded on the `libc.a` path; if that binary is missing, mapuche asks for a path. The viewer has checkboxes to show instruction addresses and to interleave source code (`objdump -S`). A data, rodata, or other non-code section opens a hex diff of the ELF bytes instead.
 
 ## Screenshot
@@ -40,7 +41,7 @@ mapuche --version
 - [x] implement `--help`/`--version` 
 - [x] copy cell content (press Shift and select using mouse as you would in other terminal apps.)
 - [ ] regex filters
-- [ ] map diff: highlight reduced sections with green and red otherwise (also, add shortcut "hide reduced")
+- [x] map diff: highlight reduced sections with green and red otherwise (also, add "Hide reduced" checkbox)
 - [x] button that hides debug sections
 - [x] columns sort
 - [x] support expand/collapse by left/right arrows and space button
